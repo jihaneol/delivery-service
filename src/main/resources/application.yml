@@ -2,7 +2,6 @@ spring:
   application:
     name: delivery
 
-  # DB ?? ? 3-3? docker run ?? ???
   datasource:
     url: jdbc:postgresql://localhost:5432/delivery
     username: delivery
@@ -16,3 +15,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+jwt:
+  secret: ${JWT_SECRET:dev-only-secret-key-change-me-at-least-32-bytes!!}
+  expiration-ms: 3600000

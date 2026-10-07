@@ -3,6 +3,7 @@ package com.example.delivery.user.service;
 import com.example.delivery.global.security.JwtUtil;
 import com.example.delivery.user.dto.request.SignupRequest;
 import com.example.delivery.user.dto.request.UserRequest;
+import com.example.delivery.user.dto.response.LoginResponse;
 import com.example.delivery.user.entity.User;
 import com.example.delivery.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
+    private final JwtUtil jwtUtil;
 
     public void createUser(SignupRequest signRequest) {
         var loginId = signRequest.getLoginId();
@@ -39,7 +41,7 @@ public class UserService {
         userRepository.save(user);
     }
 
-    public String login(UserRequest userRequest) {
+    public LoginResponse login(UserRequest userRequest) {
         var loginId = userRequest.getLoginId();
         var password = userRequest.getPassword();
 
@@ -50,6 +52,8 @@ public class UserService {
             throw new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다.");
         }
 
-        return JwtUtil.accessToken(user.getLoginId(), user.getRole());
+        String accessToken = jwtUtil.accessToken(user.getLoginId(), user.getRole());
+
+        return new LoginResponse(accessToken);
     }
 }

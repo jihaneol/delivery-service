@@ -2,6 +2,7 @@ package com.example.delivery.user.controller;
 
 import com.example.delivery.user.dto.request.SignupRequest;
 import com.example.delivery.user.dto.request.UserRequest;
+import com.example.delivery.user.dto.response.LoginResponse;
 import com.example.delivery.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,7 +26,7 @@ public class UserController {
 
     // 로그인 + 토큰 생성
     @PostMapping("/login")
-    public String login(@RequestBody UserRequest userRequest) {
+    public LoginResponse login(@RequestBody UserRequest userRequest) {
 
         return userService.login(userRequest);
     }
