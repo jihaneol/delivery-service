@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### 클로드 ###
+.claude/

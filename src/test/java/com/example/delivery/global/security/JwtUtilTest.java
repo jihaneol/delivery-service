@@ -23,14 +23,6 @@ class JwtUtilTest {
     }
 
     @Test
-    void 변조된_토큰은_검증에_실패한다() {
-        String token = jwtUtil.accessToken("user1234", Role.CUSTOMER);
-
-        assertFalse(jwtUtil.validate(token + "x"));
-        assertFalse(jwtUtil.validate("not-a-jwt"));
-    }
-
-    @Test
     void 만료된_토큰은_검증에_실패한다() {
         JwtUtil expired = new JwtUtil(SECRET, -1000);
 

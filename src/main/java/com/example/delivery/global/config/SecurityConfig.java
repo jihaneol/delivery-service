@@ -4,6 +4,7 @@ import com.example.delivery.global.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -36,6 +37,8 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // JWT 사용, 세션 미사용
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/user/signup", "/user/login").permitAll() // 회원가입, 로그인은 공개
+                        .requestMatchers(HttpMethod.GET, "/menu/**").permitAll()    // 메뉴 조회는 누구나
+                        .requestMatchers("/menu/**").hasRole("OWNER")               // 메뉴 등록/수정/삭제는 OWNER만
                         .anyRequest().permitAll()                               // 나머지는 인증 필요
                 )
                 .exceptionHandling(ex -> ex
