@@ -1,0 +1,80 @@
+package com.example.delivery.order.entity;
+
+import com.example.delivery.global.exception.GlobalException;
+import com.example.delivery.menu.entity.Menu;
+import com.example.delivery.user.entity.User;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class OrderTest {
+
+    private Order order(OrderState state) {
+        Order order = Order.create(User.builder().build(), User.builder().build(), "서울");
+        ReflectionTestUtils.setField(order, "orderState", state);
+        return order;
+    }
+
+    @Test
+    void 메뉴를_담으면_총액과_총수량이_계산된다() {
+        Order order = order(OrderState.PENDING_PAYMENT);
+
+        order.addOrderMenu(Menu.create("짜장면", 7000, "맛있음", null), 2);
+        order.addOrderMenu(Menu.create("탕수육", 15000, "바삭", null), 1);
+
+        assertThat(order.getTotalPrice()).isEqualTo(29000);
+        assertThat(order.getTotalQuantity()).isEqualTo(3);
+        assertThat(order.getOrderMenus()).hasSize(2);
+    }
+
+    @Test
+    void 결제_전_주문은_취소할_수_있다() {
+        Order order = order(OrderState.PENDING_PAYMENT);
+
+        order.cancel();
+
+        assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELED);
+    }
+
+    @Test
+    void 결제된_주문은_취소할_수_없다() {
+        Order order = order(OrderState.PAID);
+
+        assertThatThrownBy(order::cancel).isInstanceOf(GlobalException.Conflict.class);
+    }
+
+    @Test
+    void 결제_전_주문은_결제되면_결제완료가_된다() {
+        Order order = order(OrderState.PENDING_PAYMENT);
+
+        order.pay();
+
+        assertThat(order.getOrderState()).isEqualTo(OrderState.PAID);
+    }
+
+    @Test
+    void 이미_결제됐거나_취소된_주문은_결제할_수_없다() {
+        assertThatThrownBy(order(OrderState.PAID)::pay).isInstanceOf(GlobalException.Conflict.class);
+        assertThatThrownBy(order(OrderState.CANCELED)::pay).isInstanceOf(GlobalException.Conflict.class);
+    }
+
+    @Test
+    void 결제완료에서_주문수락_주문수락에서_배달완료로_변경된다() {
+        Order order = order(OrderState.PAID);
+
+        order.changeState(OrderState.ACCEPTED);
+        assertThat(order.getOrderState()).isEqualTo(OrderState.ACCEPTED);
+
+        order.changeState(OrderState.DELIVERED);
+        assertThat(order.getOrderState()).isEqualTo(OrderState.DELIVERED);
+    }
+
+    @Test
+    void 허용되지_않은_상태_변경은_실패한다() {
+        assertThatThrownBy(() -> order(OrderState.PENDING_PAYMENT).changeState(OrderState.ACCEPTED))
+                .isInstanceOf(GlobalException.Conflict.class);
+        assertThatThrownBy(() -> order(OrderState.PAID).changeState(OrderState.DELIVERED))
+                .isInstanceOf(GlobalException.Conflict.class);
+    }
+}

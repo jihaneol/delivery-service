@@ -2,10 +2,14 @@ spring:
   application:
     name: delivery
 
+  # 프로젝트 루트의 .env 를 읽는다 (없어도 무시). OS 환경변수가 있으면 그 값이 우선한다.
+  config:
+    import: optional:file:.env[.properties]
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/delivery
-    username: delivery
-    password: delivery1234
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   # 페이징 (size 상한을 두어 한 번에 너무 많이 가져오지 못하게 한다)
   data:
@@ -25,5 +29,5 @@ spring:
         format_sql: true
 
 jwt:
-  secret: ${JWT_SECRET:dev-only-secret-key-change-me-at-least-32-bytes!!}
+  secret: ${JWT_SECRET}
   expiration-ms: 3600000
