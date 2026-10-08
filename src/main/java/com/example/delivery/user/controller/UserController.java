@@ -4,6 +4,7 @@ import com.example.delivery.user.dto.request.SignupRequest;
 import com.example.delivery.user.dto.request.UserRequest;
 import com.example.delivery.user.dto.response.LoginResponse;
 import com.example.delivery.user.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,14 +20,14 @@ public class UserController {
     // 회원 가입
     // 아이디는 4~20자, 비밀번호는 8자 이상입니다
     @PostMapping("/signup")
-    public void signup(@RequestBody SignupRequest signRequest) {
+    public void signup(@Valid @RequestBody SignupRequest signRequest) {
         userService.createUser(signRequest);
     }
 
 
     // 로그인 + 토큰 생성
     @PostMapping("/login")
-    public LoginResponse login(@RequestBody UserRequest userRequest) {
+    public LoginResponse login(@Valid @RequestBody UserRequest userRequest) {
 
         return userService.login(userRequest);
     }

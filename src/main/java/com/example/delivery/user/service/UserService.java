@@ -1,5 +1,6 @@
 package com.example.delivery.user.service;
 
+import com.example.delivery.global.exception.GlobalException;
 import com.example.delivery.global.security.JwtUtil;
 import com.example.delivery.user.dto.request.SignupRequest;
 import com.example.delivery.user.dto.request.UserRequest;
@@ -23,8 +24,7 @@ public class UserService {
         var loginId = signRequest.getLoginId();
 
         if(userRepository.existsByLoginId(loginId)) {
-            //409로 만들기
-            throw new IllegalArgumentException("이미 사용중인 아이디입니다.");
+            throw new GlobalException.Conflict("이미 사용중인 아이디입니다.");
         }
 
         var password = signRequest.getPassword();
@@ -46,10 +46,10 @@ public class UserService {
         var password = userRequest.getPassword();
 
         User user  = userRepository.findByLoginId(loginId)
-                .orElseThrow(() -> new IllegalArgumentException("회원가입 정보가 없습니다."));
+                .orElseThrow(() -> new GlobalException.Unauthorized("아이디 또는 비밀번호가 올바르지 않습니다."));
 
         if(!bCryptPasswordEncoder.matches(password, user.getPassword())) {
-            throw new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다.");
+            throw new GlobalException.Unauthorized("아이디 또는 비밀번호가 올바르지 않습니다.");
         }
 
         String accessToken = jwtUtil.accessToken(user.getLoginId(), user.getRole());

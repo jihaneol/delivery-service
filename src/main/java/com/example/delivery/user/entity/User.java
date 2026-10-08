@@ -2,6 +2,7 @@ package com.example.delivery.user.entity;
 
 import com.example.delivery.global.entity.BaseEntity;
 import com.example.delivery.user.dto.enums.Role;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -26,8 +27,9 @@ public class User extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     // 아이디 4~20자
+    @Column(unique = true, nullable = false, length = 20)
     private String loginId;
-    // 비밀번호 8자 이상
+    @Column(nullable = false)
     private String password;
 
     @Enumerated(EnumType.STRING)
