@@ -1,5 +1,6 @@
 package com.example.delivery.menu.service;
 
+import com.example.delivery.global.exception.GlobalException.Forbidden;
 import com.example.delivery.menu.dto.request.MenuRequest;
 import com.example.delivery.menu.dto.response.MenuResponse;
 import com.example.delivery.menu.entity.Menu;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import static com.example.delivery.global.exception.GlobalException.NotFound;
 
 @Service
 @Transactional
@@ -22,7 +24,7 @@ public class MenuService {
     public MenuResponse.Create createMenu(String loginId, MenuRequest.Create createRequest) {
 
         User user = userRepository.findByLoginId(loginId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new NotFound("사용자를 찾을 수 없습니다."));
 
         Menu menu = Menu.create(
                 createRequest.getMenuName(),
@@ -37,12 +39,10 @@ public class MenuService {
 
     public MenuResponse.Update updateMenu(Long menuId, String loginId, MenuRequest.Update updateRequest) {
         Menu menu = menuRepository.findByIdAndDeletedFalse(menuId)
-                // 404
-                .orElseThrow(() -> new IllegalArgumentException("존재하는 메뉴가 없습니다."));
+                .orElseThrow(() -> new NotFound("존재하는 메뉴가 없습니다."));
 
         if (!menu.getUser().getLoginId().equals(loginId)) {
-            // 403 에러
-            throw new IllegalArgumentException("사장님이 등록한 메뉴만 수정이 가능합니다.");
+            throw new Forbidden("사장님이 등록한 메뉴만 수정이 가능합니다.");
         }
 
         menu.update(updateRequest.getMenuName(), updateRequest.getPrice(), updateRequest.getDescription());
@@ -58,18 +58,16 @@ public class MenuService {
     @Transactional(readOnly = true)
     public MenuResponse.Detail findDetail(Long menuId) {
         return menuRepository.findDetailById(menuId)
-                // 404
-                .orElseThrow(() -> new IllegalArgumentException("존재하는 메뉴가 없습니다."));
+                .orElseThrow(() -> new NotFound("존재하는 메뉴가 없습니다."));
     }
 
     public void deleteMenu(String loginId, Long menuId) {
 
         Menu menu = menuRepository.findByIdAndDeletedFalse(menuId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하는 메뉴가 없습니다."));
+                .orElseThrow(() -> new NotFound("존재하는 메뉴가 없습니다."));
 
         if (!menu.getUser().getLoginId().equals(loginId)) {
-            // 403
-            throw new IllegalArgumentException("사장님이 등록한 메뉴만 수정이 가능합니다.");
+            throw new Forbidden("사장님이 등록한 메뉴만 삭제가 가능합니다.");
         }
 
         menu.deleted();

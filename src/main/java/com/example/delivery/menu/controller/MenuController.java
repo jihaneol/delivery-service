@@ -3,9 +3,10 @@ package com.example.delivery.menu.controller;
 import com.example.delivery.menu.dto.request.MenuRequest;
 import com.example.delivery.menu.dto.response.MenuResponse;
 import com.example.delivery.menu.service.MenuService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.web.PagedModel;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -29,7 +30,7 @@ public class MenuController {
     @PostMapping
     public ResponseEntity<MenuResponse.Create> createMenu(
             @AuthenticationPrincipal String loginId,
-            @RequestBody MenuRequest.Create createRequest
+            @Valid @RequestBody MenuRequest.Create createRequest
     ) {
         var response = menuService.createMenu(loginId, createRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -40,7 +41,7 @@ public class MenuController {
     public ResponseEntity<MenuResponse.Update> updateMenu(
             @AuthenticationPrincipal String loginId,
             @PathVariable("id") Long menuId,
-            @RequestBody MenuRequest.Update updateRequest) {
+            @Valid @RequestBody MenuRequest.Update updateRequest) {
         var response = menuService.updateMenu(menuId, loginId, updateRequest);
 
         return ResponseEntity.ok(response);
