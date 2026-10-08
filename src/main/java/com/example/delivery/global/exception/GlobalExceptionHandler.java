@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -34,7 +35,8 @@ public class GlobalExceptionHandler {
     }
 
     // 요청 본문/타입 오류 - 400
-    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class
+    , NoResourceFoundException.class})
     public ResponseEntity<ErrorResponse> handleBadRequest(Exception e) {
         log.warn("잘못된 요청입니다. message = {}", e.getMessage());
         return ResponseEntity.badRequest().body(new ErrorResponse("요청 형식이 올바르지 않습니다."));
