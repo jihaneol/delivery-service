@@ -22,7 +22,8 @@ public class OrderMenu extends BaseEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "menu_id")
+    @JoinColumn(name = "menu_id",
+            foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Menu menu;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
