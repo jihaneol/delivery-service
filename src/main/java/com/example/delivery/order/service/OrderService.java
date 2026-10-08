@@ -33,7 +33,6 @@ public class OrderService {
     private final OrderRepository orderRepository;
 
     // 트랜잭션을 걸지 않는다.
-    // TODO: OSIV를 끄고 켜고 문제가 있는지 확인해보기
     public OrderResponse.Create createOrder(String loginId, OrderRequest.Create orderRequest) {
 
         User customer = findUser(loginId);
@@ -85,9 +84,11 @@ public class OrderService {
         return new OrderResponse.Create(successes, failures, totalOrderPrice);
     }
 
+    @Transactional(readOnly = true)
     public Page<OrderResponse.Summary> findAllOrder(
             String loginId, OrderRequest.Search cond, Pageable pageable) {
-        return orderProcessor.findAllByLoginId(loginId, cond, pageable);
+        User user = findUser(loginId);
+        return orderRepository.findAllByUser(user.getId(), user.getRole(), cond, pageable);
     }
 
     @Transactional

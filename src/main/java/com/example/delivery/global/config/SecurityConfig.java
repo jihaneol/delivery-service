@@ -42,6 +42,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/order").hasRole("CUSTOMER")          // 주문 생성은 CUSTOMER만
                         .requestMatchers(HttpMethod.PATCH, "/order/*/cancel").hasRole("CUSTOMER") // 주문 취소는 CUSTOMER만
                         .requestMatchers(HttpMethod.PATCH, "/order/*/state").hasRole("OWNER")     // 상태 변경은 OWNER만
+                        .requestMatchers(HttpMethod.POST, "/payment").hasRole("CUSTOMER")         // 결제는 CUSTOMER만
                         .requestMatchers("/order/**").authenticated()                            // 그 외 주문 API는 로그인 필요
                         .anyRequest().permitAll()                               // 나머지는 인증 필요
                 )

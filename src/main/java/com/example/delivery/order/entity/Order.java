@@ -81,6 +81,14 @@ public class Order extends BaseEntity {
         orderState = OrderState.CANCELED;
     }
 
+    // 주문요청(결제 전) 상태에서만 결제할 수 있다
+    public void pay() {
+        if (orderState != OrderState.PENDING_PAYMENT) {
+            throw new GlobalException.Conflict("주문요청 상태의 주문만 결제할 수 있습니다.");
+        }
+        orderState = OrderState.PAID;
+    }
+
     // 결제완료 -> 주문수락, 주문수락 -> 배달완료 두 가지만 허용한다
     public void changeState(OrderState next) {
         boolean allowedAccepte = (orderState == OrderState.PAID && next == OrderState.ACCEPTED);
