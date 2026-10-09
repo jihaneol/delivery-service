@@ -17,19 +17,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
     private final UserService userService;
 
-    // 회원 가입
-    // 아이디는 4~20자, 비밀번호는 8자 이상입니다
     @PostMapping("/signup")
     public void signup(@Valid @RequestBody SignupRequest signRequest) {
         userService.createUser(signRequest);
     }
 
-
-    // 로그인 + 토큰 생성
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody UserRequest userRequest) {
-
         return userService.login(userRequest);
     }
-
 }

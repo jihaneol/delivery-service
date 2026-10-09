@@ -7,6 +7,7 @@ CREATE TABLE orders (
     total_quantity INTEGER,
     address        VARCHAR(255),
     order_state    VARCHAR(255),  -- PENDING_PAYMENT, PAID, ACCEPTED, DELIVERED, CANCELED
+    reordered      BOOLEAN      NOT NULL DEFAULT false,  -- 취소된 주문으로 재주문했는지 (1회만 허용)
     created_at     TIMESTAMP    NOT NULL,
     updated_at     TIMESTAMP    NOT NULL
 );
@@ -14,6 +15,9 @@ CREATE TABLE orders (
 -- 이미 orders 테이블이 있는 경우 (BaseEntity 상속으로 추가된 컬럼)
 -- ALTER TABLE orders ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT now();
 -- ALTER TABLE orders ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT now();
+
+-- 이미 orders 테이블이 있는 경우 (재주문 여부 컬럼 추가) - 애플리케이션 실행 전에 먼저 실행한다
+-- ALTER TABLE orders ADD COLUMN reordered BOOLEAN NOT NULL DEFAULT false;
 
 -- 주문 목록 조회용 인덱스 (내 주문 + 상태 + 최신순)
 CREATE INDEX idx_orders_customer_state ON orders (customer_id, order_state, id DESC);

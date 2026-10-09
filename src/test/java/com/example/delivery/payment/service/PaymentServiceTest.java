@@ -50,7 +50,7 @@ class PaymentServiceTest {
         User customer = user(1L);
         Order order = order(customer);
         given(userRepository.findByLoginId("c1")).willReturn(Optional.of(customer));
-        given(orderRepository.findById(10L)).willReturn(Optional.of(order));
+        given(orderRepository.findWithLockById(10L)).willReturn(Optional.of(order));
         given(paymentRepository.save(any(Payment.class))).willAnswer(i -> i.getArgument(0));
 
         PaymentResponse.Create response =
@@ -64,7 +64,7 @@ class PaymentServiceTest {
     void 다른_손님의_주문은_결제할_수_없다() {
         Order order = order(user(2L));
         given(userRepository.findByLoginId("c1")).willReturn(Optional.of(user(1L)));
-        given(orderRepository.findById(10L)).willReturn(Optional.of(order));
+        given(orderRepository.findWithLockById(10L)).willReturn(Optional.of(order));
 
         assertThatThrownBy(() -> paymentService.createPayment("c1", new PaymentRequest.Create(10L, PaymentMethod.CARD)))
                 .isInstanceOf(GlobalException.Forbidden.class);

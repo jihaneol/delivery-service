@@ -1,6 +1,7 @@
 package com.example.delivery.payment.entity;
 
 import com.example.delivery.global.entity.BaseEntity;
+import com.example.delivery.global.exception.GlobalException;
 import com.example.delivery.order.entity.Order;
 import jakarta.persistence.Column;
 import jakarta.persistence.ConstraintMode;
@@ -41,11 +42,24 @@ public class Payment extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PaymentState paymentState = PaymentState.PAID;
+
     public static Payment create(Order order, PaymentMethod paymentMethod) {
         return Payment.builder()
                 .order(order)
                 .paymentMethod(paymentMethod)
                 .amount(order.getTotalPrice())
                 .build();
+    }
+
+    // 결제 취소 (주문 취소와 같은 트랜잭션에서 호출된다)
+    public void cancel() {
+        if (paymentState != PaymentState.PAID) {
+            throw new GlobalException.Conflict("이미 취소된 결제입니다.");
+        }
+        paymentState = PaymentState.CANCELED;
     }
 }

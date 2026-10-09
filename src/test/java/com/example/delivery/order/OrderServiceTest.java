@@ -1,12 +1,17 @@
 package com.example.delivery.order;
 
 import com.example.delivery.global.exception.GlobalException;
+import com.example.delivery.menu.entity.Menu;
 import com.example.delivery.menu.repository.MenuRepository;
 import com.example.delivery.order.dto.request.OrderRequest;
 import com.example.delivery.order.entity.Order;
 import com.example.delivery.order.entity.OrderState;
 import com.example.delivery.order.repository.OrderRepository;
 import com.example.delivery.order.service.OrderService;
+import com.example.delivery.payment.entity.Payment;
+import com.example.delivery.payment.entity.PaymentMethod;
+import com.example.delivery.payment.entity.PaymentState;
+import com.example.delivery.payment.repository.PaymentRepository;
 import com.example.delivery.user.entity.User;
 import com.example.delivery.user.repository.UserRepository;
 import java.util.List;
@@ -19,8 +24,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -28,6 +36,7 @@ class OrderServiceTest {
     @Mock UserRepository userRepository;
     @Mock MenuRepository menuRepository;
     @Mock OrderRepository orderRepository;
+    @Mock PaymentRepository paymentRepository;
     @InjectMocks OrderService orderService;
 
     private User user(Long id, String loginId) {
@@ -45,7 +54,7 @@ class OrderServiceTest {
         User customer = user(1L, "c1");
         Order order = order(customer, user(9L, "o1"), OrderState.PENDING_PAYMENT);
         given(userRepository.findByLoginId("c1")).willReturn(Optional.of(customer));
-        given(orderRepository.findById(10L)).willReturn(Optional.of(order));
+        given(orderRepository.findWithLockById(10L)).willReturn(Optional.of(order));
 
         orderService.cancelOrder("c1", 10L);
 
@@ -53,10 +62,125 @@ class OrderServiceTest {
     }
 
     @Test
+    void 결제_전_주문을_취소하면_결제_취소는_하지_않는다() {
+        User customer = user(1L, "c1");
+        Order order = order(customer, user(9L, "o1"), OrderState.PENDING_PAYMENT);
+        given(userRepository.findByLoginId("c1")).willReturn(Optional.of(customer));
+        given(orderRepository.findWithLockById(10L)).willReturn(Optional.of(order));
+
+        orderService.cancelOrder("c1", 10L);
+
+        verify(paymentRepository, never()).findByOrderId(any());
+    }
+
+    @Test
+    void 고객이_결제된_주문을_취소하면_결제도_취소된다() {
+        User customer = user(1L, "c1");
+        Order order = order(customer, user(9L, "o1"), OrderState.PAID);
+        Payment payment = Payment.create(order, PaymentMethod.CARD);
+        given(userRepository.findByLoginId("c1")).willReturn(Optional.of(customer));
+        given(orderRepository.findWithLockById(10L)).willReturn(Optional.of(order));
+        given(paymentRepository.findByOrderId(10L)).willReturn(Optional.of(payment));
+
+        orderService.cancelOrder("c1", 10L);
+
+        assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELED);
+        assertThat(payment.getPaymentState()).isEqualTo(PaymentState.CANCELED);
+    }
+
+    @Test
+    void 사장님이_수락한_주문을_취소하면_결제도_취소된다() {
+        User owner = user(9L, "o1");
+        Order order = order(user(1L, "c1"), owner, OrderState.ACCEPTED);
+        Payment payment = Payment.create(order, PaymentMethod.CARD);
+        given(userRepository.findByLoginId("o1")).willReturn(Optional.of(owner));
+        given(orderRepository.findWithLockById(10L)).willReturn(Optional.of(order));
+        given(paymentRepository.findByOrderId(10L)).willReturn(Optional.of(payment));
+
+        orderService.cancelOrder("o1", 10L);
+
+        assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELED);
+        assertThat(payment.getPaymentState()).isEqualTo(PaymentState.CANCELED);
+    }
+
+    @Test
+    void 결제_내역이_없으면_결제된_주문은_취소되지_않는다() {
+        User customer = user(1L, "c1");
+        Order order = order(customer, user(9L, "o1"), OrderState.PAID);
+        given(userRepository.findByLoginId("c1")).willReturn(Optional.of(customer));
+        given(orderRepository.findWithLockById(10L)).willReturn(Optional.of(order));
+        given(paymentRepository.findByOrderId(10L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> orderService.cancelOrder("c1", 10L))
+                .isInstanceOf(GlobalException.Conflict.class);
+    }
+
+    @Test
+    void 다른_가게_사장님은_주문을_취소할_수_없다() {
+        Order order = order(user(1L, "c1"), user(8L, "o2"), OrderState.PAID);
+        given(userRepository.findByLoginId("o1")).willReturn(Optional.of(user(9L, "o1")));
+        given(orderRepository.findWithLockById(10L)).willReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.cancelOrder("o1", 10L))
+                .isInstanceOf(GlobalException.Forbidden.class);
+    }
+
+    private Menu menu(Long id, int price) {
+        Menu menu = Menu.create("메뉴" + id, price, null, null);
+        ReflectionTestUtils.setField(menu, "id", id);
+        return menu;
+    }
+
+    @Test
+    void 취소된_주문을_재주문하면_현재_가격으로_새_주문이_만들어진다() {
+        User customer = user(1L, "c1");
+        Menu menu = menu(1L, 7000);
+        Order canceled = order(customer, user(9L, "o1"), OrderState.CANCELED);
+        canceled.addOrderMenu(menu, 2);
+        menu.update(null, 8000, null); // 취소 후 가격 인상
+        given(userRepository.findByLoginId("c1")).willReturn(Optional.of(customer));
+        given(orderRepository.findWithLockById(10L)).willReturn(Optional.of(canceled));
+        given(menuRepository.findAllByIdIn(anyCollection())).willReturn(List.of(menu));
+
+        var response = orderService.reorder("c1", 10L);
+
+        assertThat(response.totalPrice()).isEqualTo(16000);
+        assertThat(canceled.isReordered()).isTrue();
+        assertThat(canceled.getOrderState()).isEqualTo(OrderState.CANCELED);
+        verify(orderRepository).save(any(Order.class));
+    }
+
+    @Test
+    void 삭제된_메뉴가_있으면_재주문할_수_없다() {
+        User customer = user(1L, "c1");
+        Menu menu = menu(1L, 7000);
+        Order canceled = order(customer, user(9L, "o1"), OrderState.CANCELED);
+        canceled.addOrderMenu(menu, 1);
+        menu.deleted();
+        given(userRepository.findByLoginId("c1")).willReturn(Optional.of(customer));
+        given(orderRepository.findWithLockById(10L)).willReturn(Optional.of(canceled));
+        given(menuRepository.findAllByIdIn(anyCollection())).willReturn(List.of(menu));
+
+        assertThatThrownBy(() -> orderService.reorder("c1", 10L))
+                .isInstanceOf(GlobalException.NotFound.class);
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void 다른_손님의_주문은_재주문할_수_없다() {
+        Order canceled = order(user(2L, "c2"), user(9L, "o1"), OrderState.CANCELED);
+        given(userRepository.findByLoginId("c1")).willReturn(Optional.of(user(1L, "c1")));
+        given(orderRepository.findWithLockById(10L)).willReturn(Optional.of(canceled));
+
+        assertThatThrownBy(() -> orderService.reorder("c1", 10L))
+                .isInstanceOf(GlobalException.Forbidden.class);
+    }
+
+    @Test
     void 다른_손님의_주문은_취소할_수_없다() {
         Order order = order(user(2L, "c2"), user(9L, "o1"), OrderState.PENDING_PAYMENT);
         given(userRepository.findByLoginId("c1")).willReturn(Optional.of(user(1L, "c1")));
-        given(orderRepository.findById(10L)).willReturn(Optional.of(order));
+        given(orderRepository.findWithLockById(10L)).willReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.cancelOrder("c1", 10L))
                 .isInstanceOf(GlobalException.Forbidden.class);
@@ -66,7 +190,7 @@ class OrderServiceTest {
     void 다른_사장님_가게의_주문은_상태를_변경할_수_없다() {
         Order order = order(user(1L, "c1"), user(8L, "o2"), OrderState.PAID);
         given(userRepository.findByLoginId("o1")).willReturn(Optional.of(user(9L, "o1")));
-        given(orderRepository.findById(10L)).willReturn(Optional.of(order));
+        given(orderRepository.findWithLockById(10L)).willReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.changeOrderState(
                 "o1", 10L, new OrderRequest.ChangeState(OrderState.ACCEPTED)))

@@ -5,6 +5,7 @@ import com.example.delivery.global.exception.GlobalException;
 import com.example.delivery.menu.entity.Menu;
 import com.example.delivery.user.entity.User;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.ConstraintMode;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -59,6 +60,10 @@ public class Order extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private OrderState orderState;
 
+    // 취소된 이 주문으로 이미 재주문했는지 (재주문은 한 번만 허용)
+    @Column(nullable = false)
+    private boolean reordered;
+
     public static Order create(User customer, User owner, String address) {
         Order order = new Order();
         order.customer = customer;
@@ -77,12 +82,36 @@ public class Order extends BaseEntity {
         totalQuantity += quantity;
     }
 
-    // 주문요청(결제 전) 상태에서만 취소할 수 있다
-    public void cancel() {
-        if (orderState != OrderState.PENDING_PAYMENT) {
-            throw new GlobalException.Conflict("주문요청 상태의 주문만 취소할 수 있습니다.");
+    // 결제가 끝난 주문인지 (취소 시 결제도 함께 취소해야 하는지 판단)
+    public boolean isPaid() {
+        return orderState == OrderState.PAID || orderState == OrderState.ACCEPTED;
+    }
+
+    // 고객 취소: 사장님이 수락하기 전(결제 전, 결제 완료)까지만 취소할 수 있다
+    public void cancelByCustomer() {
+        if (orderState != OrderState.PENDING_PAYMENT && orderState != OrderState.PAID) {
+            throw new GlobalException.Conflict("결제 전 또는 결제 완료 상태의 주문만 취소할 수 있습니다.");
         }
         orderState = OrderState.CANCELED;
+    }
+
+    // 사장님 취소(주문 거절): 결제 완료, 주문 수락 상태에서만 취소할 수 있다
+    public void cancelByOwner() {
+        if (orderState != OrderState.PAID && orderState != OrderState.ACCEPTED) {
+            throw new GlobalException.Conflict("결제 완료 또는 주문 수락 상태의 주문만 취소할 수 있습니다.");
+        }
+        orderState = OrderState.CANCELED;
+    }
+
+    // 취소된 주문만, 한 번만 재주문할 수 있다
+    public void markReordered() {
+        if (orderState != OrderState.CANCELED) {
+            throw new GlobalException.Conflict("취소된 주문만 다시 주문할 수 있습니다.");
+        }
+        if (reordered) {
+            throw new GlobalException.Conflict("이미 다시 주문한 주문입니다.");
+        }
+        reordered = true;
     }
 
     // 주문요청(결제 전) 상태에서만 결제할 수 있다

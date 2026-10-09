@@ -7,7 +7,9 @@ import com.example.delivery.menu.repository.MenuRepository;
 import com.example.delivery.order.dto.request.OrderRequest;
 import com.example.delivery.order.dto.response.OrderResponse;
 import com.example.delivery.order.entity.Order;
+import com.example.delivery.order.entity.OrderMenu;
 import com.example.delivery.order.repository.OrderRepository;
+import com.example.delivery.payment.repository.PaymentRepository;
 import com.example.delivery.user.entity.User;
 import com.example.delivery.user.repository.UserRepository;
 import java.util.ArrayList;
@@ -31,6 +33,7 @@ public class OrderService {
     private final MenuRepository menuRepository;
     private final OrderProcessor orderProcessor;
     private final OrderRepository orderRepository;
+    private final PaymentRepository paymentRepository;
 
     // 트랜잭션을 걸지 않는다.
     public OrderResponse.Create createOrder(String loginId, OrderRequest.Create orderRequest) {
@@ -91,14 +94,57 @@ public class OrderService {
         return orderRepository.findAllByUser(user.getId(), user.getRole(), cond, pageable);
     }
 
+    // 주문 취소 - 고객(결제 전, 결제 완료) / 사장님(결제 완료, 주문 수락)
+    // 결제된 주문이면 결제도 같은 트랜잭션에서 취소한다 (주문 취소 + 결제 취소가 함께 성공하거나 함께 실패)
     @Transactional
     public void cancelOrder(String loginId, Long orderId) {
         User user = findUser(loginId);
         Order order = findOrder(orderId);
-        if (!order.getCustomer().getId().equals(user.getId())) {
-            throw new GlobalException.Forbidden("본인의 주문만 취소할 수 있습니다.");
+        boolean paid = order.isPaid();
+
+        if (order.getCustomer().getId().equals(user.getId())) {
+            order.cancelByCustomer();
+        } else if (order.getOwner().getId().equals(user.getId())) {
+            order.cancelByOwner();
+        } else {
+            throw new GlobalException.Forbidden("본인의 주문 또는 본인 가게의 주문만 취소할 수 있습니다.");
         }
-        order.cancel();
+
+        if (paid) {
+            paymentRepository.findByOrderId(orderId)
+                    .orElseThrow(() -> new GlobalException.Conflict("결제 내역이 없어 주문을 취소할 수 없습니다."))
+                    .cancel();
+        }
+    }
+
+    // 재주문 - 고객 : 취소된 주문과 같은 메뉴·수량·배송지로 새 주문(결제 전)을 만든다
+    // 취소된 주문과 결제 기록은 그대로 두고, 금액은 현재 메뉴 가격으로 다시 계산한다
+    @Transactional
+    public OrderResponse.Create.Success reorder(String loginId, Long orderId) {
+        User customer = findUser(loginId);
+        Order canceledOrder = findOrder(orderId);
+        if (!canceledOrder.getCustomer().getId().equals(customer.getId())) {
+            throw new GlobalException.Forbidden("본인의 주문만 다시 주문할 수 있습니다.");
+        }
+        canceledOrder.markReordered();
+
+        Map<Long, Integer> quantityByMenuId = canceledOrder.getOrderMenus().stream()
+                .collect(Collectors.toMap(orderMenu -> orderMenu.getMenu().getId(), OrderMenu::getQuantity));
+        List<Menu> menus = menuRepository.findAllByIdIn(quantityByMenuId.keySet());
+
+        // 그 사이 삭제된 메뉴가 있으면 재주문하지 않는다 (트랜잭션 롤백으로 재주문 표시도 되돌아간다)
+        if (menus.size() != quantityByMenuId.size() || menus.stream().anyMatch(Menu::isDeleted)) {
+            throw new NotFound("존재하지 않거나 삭제된 메뉴가 있어 다시 주문할 수 없습니다.");
+        }
+
+        Order order = Order.create(customer, canceledOrder.getOwner(), canceledOrder.getAddress());
+        for (Menu menu : menus) {
+            order.addOrderMenu(menu, quantityByMenuId.get(menu.getId()));
+        }
+        orderRepository.save(order);
+
+        return new OrderResponse.Create.Success(
+                order.getId(), canceledOrder.getOwner().getId(), order.getTotalPrice());
     }
 
     @Transactional
@@ -116,8 +162,9 @@ public class OrderService {
                 .orElseThrow(() -> new NotFound("존재하지 않는 회원입니다."));
     }
 
+    // 상태 변경용 조회라서 주문 행을 잠근다 (동시 요청 직렬화)
     private Order findOrder(Long orderId) {
-        return orderRepository.findById(orderId)
+        return orderRepository.findWithLockById(orderId)
                 .orElseThrow(() -> new NotFound("존재하지 않는 주문입니다."));
     }
 }

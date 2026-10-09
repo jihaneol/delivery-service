@@ -26,7 +26,7 @@ public class PaymentService {
     public PaymentResponse.Create createPayment(String loginId, PaymentRequest.Create createRequest) {
         User user = userRepository.findByLoginId(loginId)
                 .orElseThrow(() -> new NotFound("존재하지 않는 회원입니다."));
-        Order order = orderRepository.findById(createRequest.orderId())
+        Order order = orderRepository.findWithLockById(createRequest.orderId())
                 .orElseThrow(() -> new NotFound("존재하지 않는 주문입니다."));
 
         if (!order.getCustomer().getId().equals(user.getId())) {

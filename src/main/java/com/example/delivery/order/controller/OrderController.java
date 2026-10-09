@@ -29,7 +29,6 @@ public class OrderController {
      * 주문 생성
      * 해당 가게 사장님1 - 팔보체 2개, 짜장면 1개
      * 해당 가게 사장님2 - 팥빙수 1개
-     * 이 주문 건들은 묶어서 결제 노노 , 각각은 독립된 주문들이다.
      */
     @PostMapping
     public ResponseEntity<OrderResponse.Create> createOrder(
@@ -57,9 +56,9 @@ public class OrderController {
 
     /**
      * 주문 취소
-     * 고객만 취소가능
-     * 결제 전에만 취소가능
-     * TODO: 결제 후 취소(결제 상태를 취소로 변경) · 사장님의 주문 거절
+     * 고객 - 결제 전, 결제 완료(사장님 수락 전)
+     * 사장님 - 결제 완료, 주문 수락 (주문 거절)
+     * 결제된 주문은 결제도 함께 취소된다
      */
     @PatchMapping("/{id}/cancel")
     public void cancelOrder(
@@ -67,6 +66,19 @@ public class OrderController {
             @PathVariable("id") Long orderId
     ) {
         orderService.cancelOrder(loginId, orderId);
+    }
+
+    /**
+     * 재주문 - 고객
+     * 취소된 주문과 같은 메뉴·수량·배송지로 새 주문을 만든다 (주문 1건당 한 번)
+     */
+    @PostMapping("/{id}/reorder")
+    public ResponseEntity<OrderResponse.Create.Success> reorder(
+            @AuthenticationPrincipal String loginId,
+            @PathVariable("id") Long orderId
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(orderService.reorder(loginId, orderId));
     }
 
     /**

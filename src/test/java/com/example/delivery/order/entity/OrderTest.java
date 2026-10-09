@@ -29,19 +29,51 @@ class OrderTest {
     }
 
     @Test
-    void 결제_전_주문은_취소할_수_있다() {
-        Order order = order(OrderState.PENDING_PAYMENT);
+    void 고객은_결제_전과_결제_완료_주문을_취소할_수_있다() {
+        Order pending = order(OrderState.PENDING_PAYMENT);
+        Order paid = order(OrderState.PAID);
 
-        order.cancel();
+        pending.cancelByCustomer();
+        paid.cancelByCustomer();
 
-        assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELED);
+        assertThat(pending.getOrderState()).isEqualTo(OrderState.CANCELED);
+        assertThat(paid.getOrderState()).isEqualTo(OrderState.CANCELED);
     }
 
     @Test
-    void 결제된_주문은_취소할_수_없다() {
-        Order order = order(OrderState.PAID);
+    void 고객은_수락됐거나_배달됐거나_이미_취소된_주문을_취소할_수_없다() {
+        assertThatThrownBy(order(OrderState.ACCEPTED)::cancelByCustomer).isInstanceOf(GlobalException.Conflict.class);
+        assertThatThrownBy(order(OrderState.DELIVERED)::cancelByCustomer).isInstanceOf(GlobalException.Conflict.class);
+        assertThatThrownBy(order(OrderState.CANCELED)::cancelByCustomer).isInstanceOf(GlobalException.Conflict.class);
+    }
 
-        assertThatThrownBy(order::cancel).isInstanceOf(GlobalException.Conflict.class);
+    @Test
+    void 사장님은_결제_완료와_주문_수락_주문을_취소할_수_있다() {
+        Order paid = order(OrderState.PAID);
+        Order accepted = order(OrderState.ACCEPTED);
+
+        paid.cancelByOwner();
+        accepted.cancelByOwner();
+
+        assertThat(paid.getOrderState()).isEqualTo(OrderState.CANCELED);
+        assertThat(accepted.getOrderState()).isEqualTo(OrderState.CANCELED);
+    }
+
+    @Test
+    void 사장님은_결제_전이나_배달된_주문을_취소할_수_없다() {
+        assertThatThrownBy(order(OrderState.PENDING_PAYMENT)::cancelByOwner).isInstanceOf(GlobalException.Conflict.class);
+        assertThatThrownBy(order(OrderState.DELIVERED)::cancelByOwner).isInstanceOf(GlobalException.Conflict.class);
+    }
+
+    @Test
+    void 취소된_주문만_한_번_재주문할_수_있다() {
+        Order canceled = order(OrderState.CANCELED);
+
+        canceled.markReordered();
+
+        assertThat(canceled.isReordered()).isTrue();
+        assertThatThrownBy(canceled::markReordered).isInstanceOf(GlobalException.Conflict.class);
+        assertThatThrownBy(order(OrderState.PAID)::markReordered).isInstanceOf(GlobalException.Conflict.class);
     }
 
     @Test
