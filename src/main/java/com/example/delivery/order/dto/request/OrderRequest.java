@@ -1,6 +1,6 @@
 package com.example.delivery.order.dto.request;
 
-import com.example.delivery.order.entity.OrderState;
+import com.example.delivery.order.domain.OrderState;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

@@ -1,6 +1,6 @@
 package com.example.delivery.payment.dto.request;
 
-import com.example.delivery.payment.entity.PaymentMethod;
+import com.example.delivery.payment.domain.PaymentMethod;
 import jakarta.validation.constraints.NotNull;
 
 public class PaymentRequest {

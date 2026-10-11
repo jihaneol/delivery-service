@@ -43,7 +43,7 @@
 ```bash
 ./gradlew build                                   # 컴파일 + 테스트
 ./gradlew test                                    # 테스트만
-./gradlew test --tests "com.example.delivery.order.entity.OrderTest"   # 단일 테스트
+./gradlew test --tests "com.example.delivery.order.domain.OrderTest"   # 단일 테스트
 ```
 
 ## 인증
@@ -164,9 +164,9 @@ GET /order?states=PAID&states=ACCEPTED&page=0&size=20
 ```
 src/main/java/com/example/delivery
 ├── global        공통 (config, entity(BaseEntity), exception, security(JWT))
-├── user          회원: controller / service / repository / entity / dto
+├── user          회원: presentation → application → domain ← infrastructure, dto
 ├── menu          메뉴 (기준 구현)
-├── order         주문 (OrderService, OrderProcessor)
+├── order         주문 (변경 OrderService·OrderProcessor / 조회 OrderQueryService)
 └── payment       결제
 sql/              테이블 DDL, 더미 데이터
 CLAUDE.md         작업 규칙 (.claude/rules 에 코드 컨벤션)

@@ -1,6 +1,6 @@
 package com.example.delivery.order.dto.response;
 
-import com.example.delivery.order.entity.OrderState;
+import com.example.delivery.order.domain.OrderState;
 import com.querydsl.core.annotations.QueryProjection;
 import java.time.LocalDateTime;
 import java.util.List;

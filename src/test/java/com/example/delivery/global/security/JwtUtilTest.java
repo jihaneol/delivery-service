@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.example.delivery.user.dto.enums.Role;
+import com.example.delivery.user.domain.Role;
 import org.junit.jupiter.api.Test;
 
 class JwtUtilTest {

@@ -1,6 +1,6 @@
 package com.example.delivery.global.security;
 
-import com.example.delivery.user.dto.enums.Role;
+import com.example.delivery.user.domain.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
